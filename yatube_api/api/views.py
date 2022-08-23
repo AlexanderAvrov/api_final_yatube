@@ -1,15 +1,13 @@
-from django.contrib.auth import get_user_model
 from django.shortcuts import get_object_or_404
-from posts.models import Comment, Group, Post
-from rest_framework import filters, mixins, viewsets
+from rest_framework import filters, viewsets
 from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.permissions import IsAuthenticated
 
+from posts.models import Group, Post, User
+from .mixins import CreateRetrieveViewSet
 from .permissions import IsOwnerOrReadOnly
 from .serializers import (CommentSerializer, FollowSerializer, GroupSerializer,
                           PostSerializer)
-
-User = get_user_model()
 
 
 class PostViewSet(viewsets.ModelViewSet):
@@ -33,23 +31,15 @@ class CommentViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         """Метод для определения сета комментариев"""
-        post_id = self.kwargs.get('post_id')
-        new_queryset = Comment.objects.filter(post=post_id)
+        post = get_object_or_404(Post, id=self.kwargs.get('post_id'))
+        new_queryset = post.comments.all()
 
         return new_queryset
 
     def perform_create(self, serializer):
         """Переопределение метода создания комментария"""
-        post_id = self.kwargs.get('post_id')
-        post = Post.objects.get(id=post_id)
+        post = get_object_or_404(Post, id=self.kwargs.get('post_id'))
         serializer.save(author=self.request.user, post=post)
-
-
-class CreateRetrieveViewSet(mixins.CreateModelMixin, mixins.ListModelMixin,
-                            viewsets.GenericViewSet):
-    """Вьюсет для создания и просмотра всех экземпляров"""
-
-    pass
 
 
 class FollowViewSet(CreateRetrieveViewSet):
@@ -72,16 +62,8 @@ class FollowViewSet(CreateRetrieveViewSet):
         serializer.save(user=self.request.user)
 
 
-class RetrieveViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin,
-                      viewsets.GenericViewSet):
-    """Вьюсет для просмотра единичного экземпляра и всех экземпляров"""
-
-    pass
-
-
-class GroupViewSet(RetrieveViewSet):
+class GroupViewSet(viewsets.ReadOnlyModelViewSet):
     """Вьюсет для Групп"""
 
     queryset = Group.objects.all()
     serializer_class = GroupSerializer
-    pagination_class = None

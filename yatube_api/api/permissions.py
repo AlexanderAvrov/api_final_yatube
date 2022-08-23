@@ -4,8 +4,18 @@ from rest_framework import permissions
 class IsOwnerOrReadOnly(permissions.BasePermission):
     """Разрешение для редактирования и удаления данных"""
 
-    def has_object_permission(self, request, view, obj):
-        if request.method in permissions.SAFE_METHODS:
-            return True
+    def has_permission(self, request, view):
+        """Проверка безопасного метода либо аутентификации"""
 
-        return obj.author == request.user
+        return (
+            request.method in permissions.SAFE_METHODS
+            or request.user.is_authenticated
+        )
+
+    def has_object_permission(self, request, view, obj):
+        """Проверка безопасного метода либо соответствия юзера автору"""
+
+        return (
+            request.method in permissions.SAFE_METHODS
+            or obj.author == request.user
+        )
